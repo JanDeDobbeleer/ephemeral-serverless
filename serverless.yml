@@ -1,0 +1,28 @@
+service: ephemeral-serverless
+
+frameworkVersion: ">=1.28.0 <2.0.0"
+
+provider:
+  name: aws
+  runtime: go1.x
+  stage: production
+  region: eu-central-1
+  environment:
+    TWITTER_CONSUMER_KEY: ${ssm:TWITTER_CONSUMER_KEY}
+    TWITTER_CONSUMER_SECRET: ${ssm:TWITTER_CONSUMER_SECRET}
+    TWITTER_ACCESS_TOKEN: ${ssm:TWITTER_ACCESS_TOKEN}
+    TWITTER_ACCESS_TOKEN_SECRET: ${ssm:TWITTER_ACCESS_TOKEN_SECRET}
+    MAX_TWEET_AGE: 24h
+    WHITELIST: 1101422074718011392
+
+package:
+ exclude:
+   - ./**
+ include:
+   - ./bin/**
+
+functions:
+  twitter:
+    handler: bin/twitter
+    events:
+      - schedule: rate(1 hour)
