@@ -1,31 +1,38 @@
 package main
 
 import (
+	"github.com/ChimeraCoder/anaconda"
+	"github.com/aws/aws-lambda-go/lambda"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"log"
-
-	"github.com/ChimeraCoder/anaconda"
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 var (
-	consumerKey       = getenv("TWITTER_CONSUMER_KEY")
-	consumerSecret    = getenv("TWITTER_CONSUMER_SECRET")
-	accessToken       = getenv("TWITTER_ACCESS_TOKEN")
-	accessTokenSecret = getenv("TWITTER_ACCESS_TOKEN_SECRET")
-	maxTweetAge       = getenv("MAX_TWEET_AGE")
-	whitelist         = getWhitelist()
+	consumerKey       string
+	consumerSecret    string
+	accessToken       string
+	accessTokenSecret string
+	maxTweetAge       string
+	whitelist         []string
 )
 
 // MyResponse for AWS SAM
 type MyResponse struct {
 	StatusCode string `json:"StatusCode"`
 	Message    string `json:"Body"`
+}
+
+func setVariables() {
+	consumerKey = getenv("TWITTER_CONSUMER_KEY")
+	consumerSecret = getenv("TWITTER_CONSUMER_SECRET")
+	accessToken = getenv("TWITTER_ACCESS_TOKEN")
+	accessTokenSecret = getenv("TWITTER_ACCESS_TOKEN_SECRET")
+	maxTweetAge = getenv("MAX_TWEET_AGE")
+	whitelist = getWhitelist(os.Getenv("WHITELIST"))
 }
 
 func getenv(name string) string {
@@ -36,14 +43,11 @@ func getenv(name string) string {
 	return v
 }
 
-func getWhitelist() []string {
-	v := os.Getenv("WHITELIST")
-
-	if v == "" {
+func getWhitelist(whiteList string) []string {
+	if whiteList == "" {
 		return make([]string, 0)
 	}
-
-	return strings.Split(v, ":")
+	return strings.Split(whiteList, ":")
 }
 
 func getTimeline(api *anaconda.TwitterApi) ([]anaconda.Tweet, error) {
@@ -59,7 +63,6 @@ func getTimeline(api *anaconda.TwitterApi) ([]anaconda.Tweet, error) {
 
 func isWhitelisted(id int64) bool {
 	tweetID := strconv.FormatInt(id, 10)
-
 	for _, w := range whitelist {
 		if w == tweetID {
 			return true
@@ -70,7 +73,6 @@ func isWhitelisted(id int64) bool {
 
 func deleteFromTimeline(api *anaconda.TwitterApi, ageLimit time.Duration) {
 	timeline, err := getTimeline(api)
-
 	if err != nil {
 		log.Print("Could not get timeline ", err)
 	}
@@ -90,7 +92,6 @@ func deleteFromTimeline(api *anaconda.TwitterApi, ageLimit time.Duration) {
 		}
 	}
 	log.Print("No more tweets to delete")
-
 }
 
 func ephemeral() (MyResponse, error) {
@@ -110,7 +111,6 @@ func ephemeral() (MyResponse, error) {
 }
 
 func main() {
-
+	setVariables()
 	lambda.Start(ephemeral)
-
 }

@@ -25,6 +25,11 @@
   version = "1.x"
 
 [[constraint]]
+  name = "gotest.tools"
+  version = "2.3.0"
+  source = "github.com/gotestyourself/gotest.tools"
+
+[[constraint]]
   name = "github.com/ChimeraCoder/anaconda"
   branch = "master"
   source = "github.com/ChimeraCoder/anaconda"
