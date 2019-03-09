@@ -22,7 +22,7 @@ MAX_TWEET_AGE
 
 Optionally, you can whitelist certain tweets and save them from deletion by setting the variable `WHITELIST` with the tweet's ID as the value. Find the ID as the string of numbers at the end of the tweet's URL, for example:
 
-https://twitter.com/jandedobbeleer/status/`1101422074718011392`
+https://twitter.com/jandedobbeleer/status/1101422074718011392
 
 Set one ID to whitelist, or multiple IDs using the separator `:` like so:
 
@@ -32,7 +32,7 @@ WHITELIST = 1101422074718011392:1052942396034609152
 
 # build.ps1
 
-This handy bash script is included to help you build your function code using PowerShell.
+This handy script is included to help you build and deploy your function code using PowerShell.
 
 # License
 Copyright (C) 2018-2019 Vicky Lai
