@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
@@ -45,4 +46,21 @@ func TestIsWhitelistedFalseMultipleElements(t *testing.T) {
 	whitelist = []string{"3456789876543234567", "45678998765465"}
 	whiteListed := isWhitelisted(87654334567)
 	assert.False(t, whiteListed)
+}
+
+func TestGetenvWithValue(t *testing.T) {
+	envKey := "TEST_ENV_SETTING"
+	defer os.Unsetenv(envKey)
+	envValue := "test"
+	err := os.Setenv(envKey, envValue)
+	if err != nil {
+		assert.Error(t, err, "Could not set environment variable")
+	}
+	variable := getenv(envKey)
+	assert.Equal(t, variable, envValue)
+}
+
+func TestGetenvNoValue(t *testing.T) {
+	envKey := "TEST_ENV_SETTING"
+	assert.Panics(t, func() { getenv(envKey) })
 }
