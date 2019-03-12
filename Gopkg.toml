@@ -25,9 +25,14 @@
   version = "1.x"
 
 [[constraint]]
-  name = "gotest.tools"
-  version = "2.3.0"
-  source = "github.com/gotestyourself/gotest.tools"
+  name = "github.com/stretchr/testify"
+  version = "1.3.0"
+  source = "github.com/stretchr/testify/assert"
+
+[[constraint]]
+  name = "github.com/stretchr/objx"
+  version = "v0.1.1"
+  source = "github.com/stretchr/objx"
 
 [[constraint]]
   name = "github.com/ChimeraCoder/anaconda"
