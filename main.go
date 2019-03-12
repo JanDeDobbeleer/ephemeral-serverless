@@ -22,6 +22,14 @@ var (
 	whitelist          []string
 )
 
+// TwitterAPIClient for mocking out Anaconda
+type TwitterAPIClient interface {
+	GetSelf(v url.Values) (u anaconda.User, err error)
+	GetUserTimeline(v url.Values) (timeline []anaconda.Tweet, err error)
+	GetSearch(queryString string, v url.Values) (sr anaconda.SearchResponse, err error)
+	DeleteTweet(id int64, trimUser bool) (tweet anaconda.Tweet, err error)
+}
+
 // MyResponse for AWS SAM
 type MyResponse struct {
 	StatusCode string `json:"StatusCode"`
@@ -53,7 +61,7 @@ func getWhitelist(whiteList string) []string {
 	return strings.Split(whiteList, ":")
 }
 
-func getTimeline(api *anaconda.TwitterApi) ([]anaconda.Tweet, error) {
+func getTimeline(api TwitterAPIClient) ([]anaconda.Tweet, error) {
 	args := url.Values{}
 	args.Add("count", "200")
 	args.Add("include_rts", "true")
@@ -64,7 +72,7 @@ func getTimeline(api *anaconda.TwitterApi) ([]anaconda.Tweet, error) {
 	return timeline, nil
 }
 
-func getRepliesForTweet(api *anaconda.TwitterApi, tweetID int64) []anaconda.Tweet {
+func getRepliesForTweet(api TwitterAPIClient, tweetID int64) []anaconda.Tweet {
 	args := url.Values{}
 	args.Add("count", "200")
 	args.Add("since_id", strconv.FormatInt(tweetID, 10))
@@ -97,7 +105,7 @@ func isWhitelisted(id int64) bool {
 	return false
 }
 
-func hasOngoingInteractions(api *anaconda.TwitterApi, tweetID int64, interactionAgeLimit time.Duration) bool {
+func hasOngoingInteractions(api TwitterAPIClient, tweetID int64, interactionAgeLimit time.Duration) bool {
 	replies := getRepliesForTweet(api, tweetID)
 	for _, reply := range replies {
 		createdTime, err := reply.CreatedAtTime()
@@ -113,7 +121,7 @@ func hasOngoingInteractions(api *anaconda.TwitterApi, tweetID int64, interaction
 	return false
 }
 
-func deleteFromTimeline(api *anaconda.TwitterApi, tweetAgeLimit time.Duration, interactionAgeLimit time.Duration) {
+func deleteFromTimeline(api TwitterAPIClient, tweetAgeLimit time.Duration, interactionAgeLimit time.Duration) {
 	timeline, err := getTimeline(api)
 	if err != nil {
 		log.Print("Could not get timeline ", err)

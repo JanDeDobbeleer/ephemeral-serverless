@@ -1,10 +1,40 @@
 package main
 
 import (
+	"errors"
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"math/rand"
+	"net/url"
 	"os"
 	"testing"
 )
+
+// Mocked AnacondaClient to test
+type MockedTwitterClient struct {
+	mock.Mock
+}
+
+func (m *MockedTwitterClient) GetSelf(v url.Values) (u anaconda.User, err error) {
+	args := m.Called(v)
+	return args.Get(0).(anaconda.User), args.Error(1)
+}
+
+func (m *MockedTwitterClient) GetUserTimeline(v url.Values) (timeline []anaconda.Tweet, err error) {
+	args := m.Called(nil)
+	return args.Get(0).([]anaconda.Tweet), args.Error(1)
+}
+
+func (m *MockedTwitterClient) GetSearch(queryString string, v url.Values) (sr anaconda.SearchResponse, err error) {
+	args := m.Called(queryString, v)
+	return args.Get(0).(anaconda.SearchResponse), args.Error(1)
+}
+
+func (m *MockedTwitterClient) DeleteTweet(id int64, trimUser bool) (tweet anaconda.Tweet, err error) {
+	args := m.Called(id, trimUser)
+	return args.Get(0).(anaconda.Tweet), args.Error(1)
+}
 
 func TestGetWhitelistEmpty(t *testing.T) {
 	got := getWhitelist("")
@@ -63,4 +93,38 @@ func TestGetenvWithValue(t *testing.T) {
 func TestGetenvNoValue(t *testing.T) {
 	envKey := "TEST_ENV_SETTING"
 	assert.Panics(t, func() { getenv(envKey) })
+}
+
+func TestGetTimelineRandomTweets(t *testing.T) {
+	client := new(MockedTwitterClient)
+	numberOftweets := rand.Intn(200)
+	var tweets []anaconda.Tweet
+	for i := 0; i < numberOftweets; i++ {
+		tweets = append(tweets, anaconda.Tweet{
+			Id: rand.Int63(),
+		})
+	}
+	client.On("GetUserTimeline", nil).Return(tweets, nil)
+	timeline, err := getTimeline(client)
+	assert.EqualValues(t, tweets, timeline)
+	assert.Nil(t, err)
+}
+
+func TestGetTimelineError(t *testing.T) {
+	client := new(MockedTwitterClient)
+	tweets := make([]anaconda.Tweet, 0)
+	expectedError := errors.New("emit macho dwarf: elf header corrupted")
+	client.On("GetUserTimeline", nil).Return(tweets, expectedError)
+	timeline, err := getTimeline(client)
+	assert.EqualValues(t, tweets, timeline)
+	assert.Equal(t, err, expectedError)
+}
+
+func TestGetTimelineNoTweets(t *testing.T) {
+	client := new(MockedTwitterClient)
+	tweets := make([]anaconda.Tweet, 0)
+	client.On("GetUserTimeline", nil).Return(tweets, nil)
+	timeline, err := getTimeline(client)
+	assert.EqualValues(t, tweets, timeline)
+	assert.Nil(t, err)
 }
