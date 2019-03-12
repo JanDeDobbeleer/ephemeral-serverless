@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,7 +18,7 @@ type MockedTwitterClient struct {
 }
 
 func (m *MockedTwitterClient) GetSelf(v url.Values) (u anaconda.User, err error) {
-	args := m.Called(v)
+	args := m.Called(nil)
 	return args.Get(0).(anaconda.User), args.Error(1)
 }
 
@@ -27,7 +28,7 @@ func (m *MockedTwitterClient) GetUserTimeline(v url.Values) (timeline []anaconda
 }
 
 func (m *MockedTwitterClient) GetSearch(queryString string, v url.Values) (sr anaconda.SearchResponse, err error) {
-	args := m.Called(queryString, v)
+	args := m.Called(queryString, nil)
 	return args.Get(0).(anaconda.SearchResponse), args.Error(1)
 }
 
@@ -127,4 +128,56 @@ func TestGetTimelineNoTweets(t *testing.T) {
 	timeline, err := getTimeline(client)
 	assert.EqualValues(t, tweets, timeline)
 	assert.Nil(t, err)
+}
+
+func TestGetRepliesForTweetRandom(t *testing.T) {
+	shouldMatch := rand.Intn(200)
+	shouldNotMatch := rand.Intn(200)
+	tweetID := rand.Int63()
+	client := new(MockedTwitterClient)
+	me := anaconda.User{
+		ScreenName: "elonmusk",
+	}
+	queryString := fmt.Sprintf("to:%s", me.ScreenName)
+	client.On("GetSelf", nil).Return(me, nil)
+	var tweets []anaconda.Tweet
+	for i := 0; i < shouldNotMatch; i++ {
+		tweets = append(tweets, anaconda.Tweet{
+			Id: rand.Int63(),
+		})
+	}
+	for i := 0; i < shouldMatch; i++ {
+		tweets = append(tweets, anaconda.Tweet{
+			Id:                rand.Int63(),
+			InReplyToStatusID: tweetID,
+		})
+	}
+	searchResponse := anaconda.SearchResponse{
+		Statuses: tweets,
+	}
+	client.On("GetSearch", queryString, nil).Return(searchResponse, nil)
+	replies := getRepliesForTweet(client, tweetID)
+	assert.Len(t, replies, shouldMatch)
+}
+
+func TestGetRepliesForTweetSelfError(t *testing.T) {
+	tweetID := rand.Int63()
+	client := new(MockedTwitterClient)
+	client.On("GetSelf", nil).Return(anaconda.User{}, errors.New("i'm a little teapot short and stout"))
+	replies := getRepliesForTweet(client, tweetID)
+	assert.Len(t, replies, 0)
+}
+
+func TestGetRepliesForTweetSearchError(t *testing.T) {
+	tweetID := rand.Int63()
+	client := new(MockedTwitterClient)
+	me := anaconda.User{
+		ScreenName: "elonmusk",
+	}
+	queryString := fmt.Sprintf("to:%s", me.ScreenName)
+	client.On("GetSelf", nil).Return(me, nil)
+	err := errors.New("i'm a little teapot short and stout")
+	client.On("GetSearch", queryString, nil).Return(anaconda.SearchResponse{}, err)
+	replies := getRepliesForTweet(client, tweetID)
+	assert.Len(t, replies, 0)
 }
