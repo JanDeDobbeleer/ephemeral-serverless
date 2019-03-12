@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 )
 
 // Mocked AnacondaClient to test
@@ -180,4 +181,71 @@ func TestGetRepliesForTweetSearchError(t *testing.T) {
 	client.On("GetSearch", queryString, nil).Return(anaconda.SearchResponse{}, err)
 	replies := getRepliesForTweet(client, tweetID)
 	assert.Len(t, replies, 0)
+}
+
+func getHasOngoingInteractions(hasActiveInteractions bool, useValidDates bool) bool {
+	shouldMatch := rand.Intn(200)
+	shouldNotMatch := rand.Intn(200)
+	tweetID := rand.Int63()
+	interactionAgeLimitHours := rand.Intn(200)
+	client := new(MockedTwitterClient)
+	me := anaconda.User{
+		ScreenName: "elonmusk",
+	}
+	queryString := fmt.Sprintf("to:%s", me.ScreenName)
+	client.On("GetSelf", nil).Return(me, nil)
+	var tweets []anaconda.Tweet
+	for i := 0; i < shouldNotMatch; i++ {
+		tweets = append(tweets, anaconda.Tweet{
+			Id: rand.Int63(),
+		})
+	}
+	var replies []anaconda.Tweet
+	for i := 0; i < shouldMatch; i++ {
+		createdAt := ""
+		if useValidDates {
+			createdAt = time.Now().Add(-201 * time.Hour).Format(time.RubyDate)
+		}
+		replies = append(replies, anaconda.Tweet{
+			Id:                rand.Int63(),
+			InReplyToStatusID: tweetID,
+			CreatedAt:         createdAt,
+		})
+	}
+	if hasActiveInteractions {
+		shouldBeActive := rand.Intn(shouldMatch)
+		for i := 0; i < shouldBeActive; i++ {
+			randomHour := rand.Intn(interactionAgeLimitHours)
+			createdAt := time.Now().Add(time.Duration(-randomHour) * time.Hour)
+			replies[i].CreatedAt = createdAt.Format(time.RubyDate)
+		}
+	}
+	tweets = append(tweets, replies...)
+	searchResponse := anaconda.SearchResponse{
+		Statuses: tweets,
+	}
+	client.On("GetSearch", queryString, nil).Return(searchResponse, nil)
+	interactionAgeLimitFormat := fmt.Sprintf("%dh", interactionAgeLimitHours)
+	interactionAgeLimit, _ := time.ParseDuration(interactionAgeLimitFormat)
+	return hasOngoingInteractions(client, tweetID, interactionAgeLimit)
+}
+
+func TestHasOngoingInteractionsTrue(t *testing.T) {
+	hasOngoingInteractions := getHasOngoingInteractions(true, true)
+	assert.True(t, hasOngoingInteractions)
+}
+
+func TestHasOngoingInteractionsFalse(t *testing.T) {
+	hasOngoingInteractions := getHasOngoingInteractions(false, true)
+	assert.False(t, hasOngoingInteractions)
+}
+
+func TestHasOngoingInteractionsInvalidDatesTrue(t *testing.T) {
+	hasOngoingInteractions := getHasOngoingInteractions(true, false)
+	assert.True(t, hasOngoingInteractions)
+}
+
+func TestHasOngoingInteractionsInvalidDatesFalse(t *testing.T) {
+	hasOngoingInteractions := getHasOngoingInteractions(false, false)
+	assert.False(t, hasOngoingInteractions)
 }
